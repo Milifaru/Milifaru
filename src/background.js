@@ -15,6 +15,8 @@ chrome.commands.onCommand.addListener(async command => {
     const mode = s.mode === 'get' ? 'contains' : 'get';
     await setSettings({ mode });
     chrome.runtime.sendMessage({ type: 'MODE_CHANGED', mode });
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    for (const tab of tabs) chrome.tabs.sendMessage(tab.id, { type: 'UPDATE_SETTINGS' });
   }
 });
 
@@ -30,6 +32,18 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   } else if (msg.type === 'PICKED') {
     chrome.runtime.sendMessage(msg);
   } else if (msg.type === 'COPY_SELECTED') {
-    chrome.runtime.sendMessage(msg);
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      for (const tab of tabs) chrome.tabs.sendMessage(tab.id, msg);
+    });
+  } else if (msg.type === 'SWITCH_MODE') {
+    (async () => {
+      const s = await getSettings();
+      const mode = s.mode === 'get' ? 'contains' : 'get';
+      await setSettings({ mode });
+      chrome.runtime.sendMessage({ type: 'MODE_CHANGED', mode });
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        for (const tab of tabs) chrome.tabs.sendMessage(tab.id, { type: 'UPDATE_SETTINGS' });
+      });
+    })();
   }
 });
