@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <link rel="stylesheet" href="popup.css"/>
+</head>
+<body>
+  <h1 id="title"></h1>
+  <label><input type="checkbox" id="pickerToggle"/> <span id="enableLabel"></span></label>
+  <div id="last">
+    <input id="bestSelector" readonly/>
+    <button id="copySelector"></button>
+    <span id="uniqueFlag"></span>
+  </div>
+  <div id="topCandidates"></div>
+  <div id="modeSwitch">
+    <span id="modeLabel"></span>
+    <label><input type="radio" name="mode" value="get"/> cy.get</label>
+    <label><input type="radio" name="mode" value="contains"/> contains</label>
+  </div>
+  <div id="preview"><code id="previewText"></code> <button id="copyPreview"></button></div>
+  <div id="contextWarning" class="warning" style="display:none"></div>
+  <div id="historySection">
+    <h3 id="historyLabel"></h3>
+    <ul id="historyList"></ul>
+  </div>
+  <fieldset id="settingsSection">
+    <legend>Settings</legend>
+    <label><input type="checkbox" id="allowNth"/> <span id="allowNthLabel"></span></label>
+    <label><span id="maxDepthLabel"></span> <input type="number" id="maxDepth" min="1" max="5"/></label>
+  </fieldset>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
