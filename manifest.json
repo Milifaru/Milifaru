@@ -20,6 +20,16 @@
       "run_at": "document_idle"
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/selectorEngine.js",
+        "src/storage.js",
+        "src/i18n.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "commands": {
     "toggle-picker": {
       "suggested_key": {
