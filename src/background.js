@@ -1,5 +1,9 @@
 import { getSettings, setSettings } from './storage.js';
 
+chrome.action.onClicked.addListener(tab => {
+  chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_PICKER' });
+});
+
 chrome.commands.onCommand.addListener(async command => {
   if (command === 'toggle-picker') {
     const tabs = await chrome.tabs.query({});
