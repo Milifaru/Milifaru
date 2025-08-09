@@ -4,8 +4,7 @@
   "version": "1.0.0",
   "description": "Helper for generating unique CSS selectors for Cypress",
   "action": {
-    "default_title": "Cypress Selector Helper",
-    "default_popup": "src/popup.html"
+    "default_title": "Cypress Selector Helper"
   },
   "background": {
     "service_worker": "src/background.js",
