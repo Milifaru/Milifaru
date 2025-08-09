@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Cypress Selector Helper",
+  "version": "1.0.0",
+  "description": "Helper for generating unique CSS selectors for Cypress",
+  "action": {
+    "default_popup": "src/popup.html"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "permissions": ["activeTab", "scripting", "storage", "commands"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.js"],
+      "css": ["src/highlight.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "toggle-picker": {
+      "suggested_key": {
+        "default": "Alt+S"
+      },
+      "description": "Toggle picker"
+    },
+    "copy-selector": {
+      "suggested_key": {
+        "default": "Alt+C"
+      },
+      "description": "Copy current selector"
+    },
+    "switch-mode": {
+      "suggested_key": {
+        "default": "Alt+X"
+      },
+      "description": "Switch mode"
+    }
+  }
+}

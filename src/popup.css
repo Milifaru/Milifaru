@@ -1,0 +1,7 @@
+body { font-family: Arial, sans-serif; margin: 10px; width: 300px; }
+#last, #preview { margin-top: 10px; }
+#bestSelector { width: 180px; }
+#topCandidates label { display: block; font-size: 12px; }
+#historyList { max-height: 120px; overflow-y: auto; font-size: 12px; }
+.warning { color: #d32f2f; margin-top: 10px; font-size: 12px; }
+.disabled { color: #999; }

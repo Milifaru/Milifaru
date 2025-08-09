@@ -1,0 +1,18 @@
+.selector-helper-overlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2147483647;
+  box-shadow: 0 0 0 2px #00bcd4, 0 0 6px rgba(0,188,212,0.5);
+}
+.selector-helper-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: #00bcd4;
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  z-index: 2147483647;
+  white-space: nowrap;
+  transform: translateY(-100%);
+}
