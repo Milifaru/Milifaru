@@ -1,11 +1,13 @@
 let picking = false;
 let lastEl = null;
-let overlay, tooltip, settings;
-let bestSelector, textBased;
+let overlay, tooltip, panel, settings;
+let bestSelector, textBased, t;
+const ui = {};
 
 (async () => {
   ({ bestSelector, textBased } = await import(chrome.runtime.getURL('src/selectorEngine.js')));
   const storage = await import(chrome.runtime.getURL('src/storage.js'));
+  ({ t } = await import(chrome.runtime.getURL('src/i18n.js')));
   settings = await storage.getSettings();
   overlay = document.createElement('div');
   overlay.className = 'selector-helper-overlay';
@@ -15,6 +17,7 @@ let bestSelector, textBased;
   tooltip.style.display = 'none';
   document.documentElement.appendChild(overlay);
   document.documentElement.appendChild(tooltip);
+  createPanel();
 })();
 
 function throttle(fn, wait) {
@@ -31,7 +34,7 @@ function throttle(fn, wait) {
 const moveHandler = throttle(e => {
   if (!picking) return;
   const el = e.target;
-  if (!el || el === overlay || el === tooltip) return;
+  if (!el || el === overlay || el === tooltip || (panel && panel.contains(el))) return;
   lastEl = el;
   const rect = el.getBoundingClientRect();
   overlay.style.display = 'block';
@@ -49,12 +52,13 @@ const moveHandler = throttle(e => {
 document.addEventListener('mousemove', moveHandler, true);
 
 document.addEventListener('click', e => {
-  if (!picking) return;
+  if (!picking || (panel && panel.contains(e.target))) return;
   e.preventDefault();
   e.stopPropagation();
   picking = false;
   overlay.style.display = 'none';
   tooltip.style.display = 'none';
+  if (ui.toggle) ui.toggle.checked = false;
   if (!lastEl) return;
   const root = lastEl.getRootNode && lastEl.getRootNode();
   const res = bestSelector(lastEl, settings);
@@ -76,17 +80,70 @@ document.addEventListener('click', e => {
       win = parent;
     }
   }
+  updatePanel(res.selector, textAlt);
   chrome.runtime.sendMessage({ type: 'PICKED', selector: res.selector, top: res.top, unique: res.unique, textAlt, context, framePath });
 }, true);
 
 chrome.runtime.onMessage.addListener(msg => {
   if (msg.type === 'TOGGLE_PICKER') {
     picking = !picking;
+    if (ui.toggle) ui.toggle.checked = picking;
     if (!picking) {
       overlay.style.display = 'none';
       tooltip.style.display = 'none';
     }
+  } else if (msg.type === 'COPY_SELECTED') {
+    if (ui.selector) navigator.clipboard.writeText(ui.selector.value);
   } else if (msg.type === 'UPDATE_SETTINGS') {
     import(chrome.runtime.getURL('src/storage.js')).then(m => m.getSettings().then(s => (settings = s)));
   }
 });
+
+function createPanel() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .selector-helper-panel {position:fixed;bottom:20px;right:20px;background:rgba(40,40,40,0.95);color:#fff;font-family:sans-serif;z-index:2147483647;padding:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.3);width:260px;}
+    .selector-helper-panel .sh-row{display:flex;align-items:center;margin-bottom:8px;gap:6px;}
+    .selector-helper-panel .sh-row:last-child{margin-bottom:0;}
+    .selector-helper-panel input[type="text"],.selector-helper-panel input[readonly]{flex:1;padding:4px 6px;border:1px solid #555;border-radius:4px;background:#222;color:#eee;}
+    .selector-helper-panel button{background:#4caf50;border:none;color:#fff;padding:4px 8px;border-radius:4px;cursor:pointer;}
+    .selector-helper-panel button:hover{background:#45a049;}
+    .selector-helper-panel code{background:#000;padding:2px 4px;border-radius:4px;flex:1;word-break:break-all;}
+  `;
+  document.documentElement.appendChild(style);
+
+  panel = document.createElement('div');
+  panel.className = 'selector-helper-panel';
+  panel.innerHTML = `
+    <div class="sh-row"><label><input type="checkbox" id="sh-toggle"/> ${t('enablePicker')}</label></div>
+    <div class="sh-row"><input id="sh-selector" readonly/><button id="sh-copy">${t('copy')}</button></div>
+    <div class="sh-row"><code id="sh-preview"></code></div>
+  `;
+  document.documentElement.appendChild(panel);
+  ui.toggle = panel.querySelector('#sh-toggle');
+  ui.selector = panel.querySelector('#sh-selector');
+  ui.copy = panel.querySelector('#sh-copy');
+  ui.preview = panel.querySelector('#sh-preview');
+
+  ui.toggle.addEventListener('change', () => {
+    picking = ui.toggle.checked;
+    if (!picking) {
+      overlay.style.display = 'none';
+      tooltip.style.display = 'none';
+    }
+  });
+
+  ui.copy.addEventListener('click', () => {
+    navigator.clipboard.writeText(ui.selector.value);
+  });
+}
+
+function updatePanel(sel, textAlt) {
+  if (!ui.selector) return;
+  ui.selector.value = sel;
+  if (textAlt) {
+    ui.preview.textContent = `cy.contains('${textAlt}')`;
+  } else {
+    ui.preview.textContent = `cy.get('${sel}')`;
+  }
+}
