@@ -1,5 +1,6 @@
 let picking = false;
 let lastEl = null;
+let highlighted = null;
 let overlay, tooltip, panel, settings;
 let bestSelector, textBased, t;
 const ui = {};
@@ -32,9 +33,26 @@ function throttle(fn, wait) {
 }
 
 const moveHandler = throttle(e => {
-  if (!picking) return;
+  if (!picking) {
+    if (highlighted) {
+      highlighted.classList.remove('__dompick-highlight');
+      highlighted = null;
+    }
+    return;
+  }
   const el = e.target;
-  if (!el || el === overlay || el === tooltip || (panel && panel.contains(el))) return;
+  if (!el || el === overlay || el === tooltip || (panel && panel.contains(el))) {
+    if (highlighted) {
+      highlighted.classList.remove('__dompick-highlight');
+      highlighted = null;
+    }
+    return;
+  }
+  if (highlighted && highlighted !== el) {
+    highlighted.classList.remove('__dompick-highlight');
+  }
+  el.classList.add('__dompick-highlight');
+  highlighted = el;
   lastEl = el;
   const rect = el.getBoundingClientRect();
   overlay.style.display = 'block';
@@ -58,6 +76,10 @@ document.addEventListener('click', e => {
   picking = false;
   overlay.style.display = 'none';
   tooltip.style.display = 'none';
+  if (highlighted) {
+    highlighted.classList.remove('__dompick-highlight');
+    highlighted = null;
+  }
   if (ui.toggle) ui.toggle.checked = false;
   if (!lastEl) return;
   const root = lastEl.getRootNode && lastEl.getRootNode();
@@ -91,6 +113,10 @@ chrome.runtime.onMessage.addListener(msg => {
     if (!picking) {
       overlay.style.display = 'none';
       tooltip.style.display = 'none';
+      if (highlighted) {
+        highlighted.classList.remove('__dompick-highlight');
+        highlighted = null;
+      }
     }
   } else if (msg.type === 'COPY_SELECTED') {
     if (ui.selector) navigator.clipboard.writeText(ui.selector.value);
@@ -130,6 +156,10 @@ function createPanel() {
     if (!picking) {
       overlay.style.display = 'none';
       tooltip.style.display = 'none';
+      if (highlighted) {
+        highlighted.classList.remove('__dompick-highlight');
+        highlighted = null;
+      }
     }
   });
 
