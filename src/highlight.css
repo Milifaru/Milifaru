@@ -16,3 +16,7 @@
   white-space: nowrap;
   transform: translateY(-100%);
 }
+
+.__dompick-highlight {
+  outline: 2px solid #ff0066;
+}
