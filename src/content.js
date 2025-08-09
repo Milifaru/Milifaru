@@ -3,6 +3,8 @@ let lastEl = null;
 let overlay, tooltip, panel, settings;
 let bestSelector, textBased, t;
 const ui = {};
+const selections = [];
+const selectedEls = [];
 
 (async () => {
   ({ bestSelector, textBased } = await import(chrome.runtime.getURL('src/selectorEngine.js')));
@@ -55,10 +57,10 @@ document.addEventListener('click', e => {
   if (!picking || (panel && panel.contains(e.target))) return;
   e.preventDefault();
   e.stopPropagation();
-  picking = false;
+  const keepPicking = e.ctrlKey || e.metaKey;
+  if (!keepPicking) picking = false;
   overlay.style.display = 'none';
   tooltip.style.display = 'none';
-  if (ui.toggle) ui.toggle.checked = false;
   if (!lastEl) return;
   const root = lastEl.getRootNode && lastEl.getRootNode();
   const res = bestSelector(lastEl, settings);
@@ -80,14 +82,16 @@ document.addEventListener('click', e => {
       win = parent;
     }
   }
-  updatePanel(res.selector, textAlt);
+  lastEl.classList.add('selector-helper-picked');
+  selectedEls.push(lastEl);
+  selections.push(res.selector);
+  updatePanel(res.selector);
   chrome.runtime.sendMessage({ type: 'PICKED', selector: res.selector, top: res.top, unique: res.unique, textAlt, context, framePath });
 }, true);
 
 chrome.runtime.onMessage.addListener(msg => {
   if (msg.type === 'TOGGLE_PICKER') {
     picking = !picking;
-    if (ui.toggle) ui.toggle.checked = picking;
     if (!picking) {
       overlay.style.display = 'none';
       tooltip.style.display = 'none';
@@ -102,48 +106,63 @@ chrome.runtime.onMessage.addListener(msg => {
 function createPanel() {
   const style = document.createElement('style');
   style.textContent = `
-    .selector-helper-panel {position:fixed;bottom:20px;right:20px;background:rgba(40,40,40,0.95);color:#fff;font-family:sans-serif;z-index:2147483647;padding:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.3);width:260px;}
-    .selector-helper-panel .sh-row{display:flex;align-items:center;margin-bottom:8px;gap:6px;}
+    .selector-helper-panel {position:fixed;bottom:20px;right:20px;width:260px;font-family:sans-serif;background:rgba(30,30,30,0.95);color:#fff;z-index:2147483647;padding:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
+    .selector-helper-panel h3{margin:0 0 8px;font-size:16px;}
+    .selector-helper-panel .sh-tip{font-size:12px;margin-bottom:8px;}
+    .selector-helper-panel .sh-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
     .selector-helper-panel .sh-row:last-child{margin-bottom:0;}
-    .selector-helper-panel input[type="text"],.selector-helper-panel input[readonly]{flex:1;padding:4px 6px;border:1px solid #555;border-radius:4px;background:#222;color:#eee;}
-    .selector-helper-panel button{background:#4caf50;border:none;color:#fff;padding:4px 8px;border-radius:4px;cursor:pointer;}
-    .selector-helper-panel button:hover{background:#45a049;}
-    .selector-helper-panel code{background:#000;padding:2px 4px;border-radius:4px;flex:1;word-break:break-all;}
+    .selector-helper-panel button{flex:1;background:#555;border:none;color:#fff;padding:4px 6px;border-radius:4px;cursor:pointer;}
+    .selector-helper-panel button:hover{background:#666;}
+    #sh-count{font-size:12px;}
+    #sh-selector{position:absolute;left:-9999px;opacity:0;}
+    .selector-helper-picked{outline:2px solid #4caf50;outline-offset:2px;}
   `;
   document.documentElement.appendChild(style);
 
   panel = document.createElement('div');
   panel.className = 'selector-helper-panel';
   panel.innerHTML = `
-    <div class="sh-row"><label><input type="checkbox" id="sh-toggle"/> ${t('enablePicker')}</label></div>
-    <div class="sh-row"><input id="sh-selector" readonly/><button id="sh-copy">${t('copy')}</button></div>
-    <div class="sh-row"><code id="sh-preview"></code></div>
+    <h3>${t('title')}</h3>
+    <div class="sh-tip">Ctrl+Click elements to select</div>
+    <div class="sh-row"><button id="sh-save">Save JSON</button><button id="sh-clear">Clear</button><button id="sh-close">Close</button></div>
+    <div class="sh-row"><span id="sh-count">0 selected</span></div>
+    <input id="sh-selector" readonly/>
   `;
   document.documentElement.appendChild(panel);
-  ui.toggle = panel.querySelector('#sh-toggle');
   ui.selector = panel.querySelector('#sh-selector');
-  ui.copy = panel.querySelector('#sh-copy');
-  ui.preview = panel.querySelector('#sh-preview');
+  ui.save = panel.querySelector('#sh-save');
+  ui.clear = panel.querySelector('#sh-clear');
+  ui.close = panel.querySelector('#sh-close');
+  ui.count = panel.querySelector('#sh-count');
 
-  ui.toggle.addEventListener('change', () => {
-    picking = ui.toggle.checked;
-    if (!picking) {
-      overlay.style.display = 'none';
-      tooltip.style.display = 'none';
-    }
+  ui.save.addEventListener('click', () => {
+    const data = JSON.stringify(selections, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'selectors.json';
+    a.click();
+    URL.revokeObjectURL(url);
   });
 
-  ui.copy.addEventListener('click', () => {
-    navigator.clipboard.writeText(ui.selector.value);
+  ui.clear.addEventListener('click', () => {
+    selectedEls.forEach(el => el.classList.remove('selector-helper-picked'));
+    selectedEls.length = 0;
+    selections.length = 0;
+    updatePanel('');
+  });
+
+  ui.close.addEventListener('click', () => {
+    panel.remove();
+    panel = null;
+    picking = false;
+    overlay.style.display = 'none';
+    tooltip.style.display = 'none';
   });
 }
 
-function updatePanel(sel, textAlt) {
-  if (!ui.selector) return;
-  ui.selector.value = sel;
-  if (textAlt) {
-    ui.preview.textContent = `cy.contains('${textAlt}')`;
-  } else {
-    ui.preview.textContent = `cy.get('${sel}')`;
-  }
+function updatePanel(sel) {
+  if (ui.selector) ui.selector.value = sel;
+  if (ui.count) ui.count.textContent = `${selections.length} selected`;
 }
